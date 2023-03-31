@@ -46,7 +46,7 @@ The unit block treatment model is defined below:
 
 $y_{ijk} = \mu + \alpha_{i} + \beta_{j} + \tau_{k} + \epsilon_{ijk}, \; \: \: i,k=\{1,2,3,4\}, \; \; j=\{1,2,3\}$
 
-Here the model has constant parameter $\mu$, $\alpha_{i}$ the blocking effect from day, $\beta_{j}$ the blocking effect from subject, $\tau_{k}$ the treatment effects and $\epsilon_{ijk} \sim N(0,\sigma^{2})$ the error of each
+Here the model has constant parameter $\mu$, $\alpha_{i}$ the blocking effect from day, $\beta_{j}$ the blocking effect from subject, $\tau_{k}$ the treatment effects and the error $\epsilon_{ijk} \sim N(0,\sigma^{2})$ and independent.
 
 ```{r}
 #creating model
@@ -85,8 +85,10 @@ qqnorm(standres, main = "")
 
 The plots show no large residual values with absolute values greater than 2 (which would indicate poor fit of the model). There is some evidence of unequal variation (in particular subjects' 2 variation is much lower than that of subjects 1 and 3). However, there is no obvious patterns with respect to the fitted values against the standardised residuals with a random scattering of points in the plot. Finally, the points of the qqplot lie on a straight line which suggested the normality assumption is valid.
 
+### Part B
+
 ```{r}
-#Adding variables 
+#Adding variables of two level factors
 exercise <- exercise%>%
   mutate(Duration=ifelse(Treatment==1,1,ifelse(Treatment==2,1,3)),
          Speed=ifelse(Treatment==1,40,ifelse(Treatment==3,40,60)),
@@ -94,9 +96,66 @@ exercise <- exercise%>%
          Duration= factor(Duration,levels=c(1,3),labels=c(1,3)),
          Speed=factor(Speed,levels=c(40,60),labels=c(40,60)),
          Pedal=factor(Pedal,levels=c("hand","foot"),labels=c("hand","foot")))
+
+exercise_contrast <- exercise%>%
+  mutate(Duration = ifelse(Duration==1,-1,1),
+         Speed = ifelse(Speed==40,-1,1),
+         Pedal = ifelse(Pedal=="hand",-1,1))
 ```
 
+
 ```{r}
+#note can't include interations due to not observations
+fact.lm <- lm(Y ~ Subject + Day + Duration +Speed + Pedal, data = exercise_contrast)
+anova(fact.lm)
+
+# #testing against models without factor (same as the anova test above but just doing explictly)
+# 
+# fact.lm.1 <- lm(Y ~ Subject + Day + Speed + Pedal, data = exercise_contrast)
+# fact.lm.2 <- lm(Y ~ Subject + Day + Duration + Pedal, data = exercise_contrast)
+# fact.lm.3 <- lm(Y ~ Subject + Day + Duration + Speed, data = exercise_contrast)
+# 
+# anova(fact.lm, fact.lm.1)
+# anova(fact.lm, fact.lm.2)
+# anova(fact.lm, fact.lm.3)
+
+
+ # exercise.2.emm <- emmeans::emmeans(fact.lm, ~ Speed+Duration)
+ # pairs(exercise.2.emm)
+```
+
+Adding the new factorial treatment effects gives the updated regression model below, 
+CHECK THIS IS ACTUALLY ALRIGHT!
+$y_{ijk} = \mu + \alpha_{i} + \beta_{j} + \tau_{k_{1}}^{S} + \tau_{k_{2}}^{D} + \tau_{k_{3}}^{P} + \epsilon_{ijk}, \; \: \: k_{w}=\{1,2\}, \;\;\; w = \{1,2,3\} \; \; j=\{1,2,3\}$
+
+In the model I define Duration=1, Speed=40 and Pedal=hand as the low level of the two-level factors and Duration=3, Speed=60 and Pedal=foot as the high level. Again the error is independent and identically distributed with constant variance $\sigma^{2}$.
+
+Using an ANOVA test after fitting this model, both Speed and Pedal factorial effects were found to be significantly different from 0 with p-values of 0.03738 and 0.01376 respectively. 
+This makes intuitive sense as in part a we found that the only significant pairwise difference was between treatment 1 and 2 which by both their speed and pedal factorial level (Treatment 1 has both set to low, meanwhile Treatment 2 has them both set to high). Thus, we would expect for speed and pedal to be significant as the difference between treatment 1 and 2 was. SURELY WE CAN SAY MORE ON THIS???
+
+
+```{r}
+fact.npedal.lm <- lm(Y ~Subject + Day + Duration+Speed+Duration:Speed, data = exercise_contrast)
+coef(fact.npedal.lm)
+
+fact.nspeed.lm <- lm(Y ~Subject + Day + Duration+Pedal+Duration:Pedal, data = exercise_contrast)
+coef(fact.nspeed.lm)
+
+fact.nduration.lm <- lm(Y ~Subject + Day + Pedal+Speed+Pedal:Speed, data = exercise_contrast)
+coef(fact.nduration.lm)
+```
+
+Due to the design not all possible combinations of the levels of the factor are present as a full factorial design would have $2^{3}=8$ different treatments instead of 4 (for example no test was done for the treatment combination of duration and speed set to low and pedal set to high). This means that we cannot investigate two-factor interactions using the dataset as the two-factor interactions cannot be separated from the third factorial effect. For example when investiagting the interaction between Duration and Speed, for Duration set to low when speed varies from its low to high level so does pedal and when Duration is set to its high level when speed varies from low to high pedal varies from high to low, thus any differences found could be due to Pedal varying and not an interaction effect between Speed and Duration (could instead be the interaction between Duration and Pedal that is causing the effect). Thus, the interaction term is confounded (SHOULD MENTION WHAT BY). To estimate the two-factor interaction we would instead need to assume the third factor has no effect on the response. Doing this means we remove this third factor from the model and thus our model becomes the blocking effects and the 2 factorial main effects and the interaction between.
+
+Performing this for each combination of 2 factors gives the estimated coefficients for the two-factor interactions of 5.1875, 3.5625 and 0.75 for Duration:Speed, Duration:Pedal and Speed Pedal:Speed respectively. IS THIS ACTUALLY MATHEMATICALLY VIABLE?? ALSO SHOULD MENTION WHEN AT HIGH LEVEL? 
+
+```{r}
+## Extra stuff :P
+
+#following code from section 5
+X <- model.matrix( ~ Subject + Day + (Duration+Speed+Pedal)^3, data = exercise_contrast)
+#note that there are 12 different blocks (3*4=12) and each one occurs once
+
 #Defined hand as the low level, speed=40 as low level and duration=1 as low level
 #all low levels of factor coded as -1 and all high levels as +1
 main_effect_contrasts <- matrix(c(-1,-1,-1,
@@ -117,22 +176,3 @@ t(as.matrix(main_effect_contrasts)) %*% exercise$Y
 ```
 
 Averaging the main effects over the blocking factors. The response decreases at the higher duration of 3 minutes by 3.167 compared to the lower duration of 1 minute. The response decreases at the higher speed of 60 rpm by 8.5 compared to the lower speed of 40 rpm. The response decreases when using the foot pedal by 10.167 compared to using the hand pedals.
-
-```{r}
-#Factor model
-#creating model
-factor.lm <- lm(Y ~ Duration+Speed+Pedal,data=exercise)
-anova(factor.lm)
-
-test.lm <- lm(Y ~ Day+Subject+Duration+Speed+Pedal,data=exercise)
-anova(test.lm)
-```
-
-I note that not all levels of the factor are present as a full factorial design for 3 different 2 level factors would have $2^{3}=8$ different treatments for each unique combination of the factors instead of 4.
-
-Using an ANOVA test both speed and Pedal were found to be significantly different from 0. This makes intuitive sense in regards to part a as we found that the only significant pairwise difference was between treatment 1 and 2. Treatment 1 and 2 vary in both speed and pedal level (with duration fixed) thus would expect for speed and pedal to be significant as the difference between treatment 1 and 2 was. (REWORD THIS)
-
-```{r}
-test.lm <- lm(Y ~ Day+Subject+Duration+Speed+Pedal,data=exercise)
-anova(test.lm)
-```
