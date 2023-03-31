@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Design of Experiments Coursework-34273638"
 format: html
 editor: visual
 ---
@@ -7,7 +7,7 @@ editor: visual
 ## Part 2
 
 ```{r}
-
+#Setting up enviroment
 library(tidyverse)
 exercise <- data.frame(
  Subject = rep(1:3, rep(4, 3)),
@@ -27,20 +27,34 @@ head(exercise)
 Investigating differences:
 
 ```{r}
-aggregate(Y~Treatment,data=exercise,FUN = mean)
-aggregate(Y~Subject,data=exercise,FUN = mean)
-aggregate(Y~Day,data=exercise,FUN = mean)
+aggregate(Y~Treatment,data=exercise,
+          FUN = function(x) c(mean = mean(x), sd = sd(x)))
+aggregate(Y~Subject,data=exercise,
+          FUN = function(x) c(mean = mean(x), sd = sd(x)))
+aggregate(Y~Day,data=exercise,
+          FUN = function(x) c(mean = mean(x), sd = sd(x)))
+#aggregate(Y~Subject,data=exercise,FUN = mean)
+#aggregate(Y~Day,data=exercise,FUN = mean)
+
+#plots
+boxplot(Y ~ Treatment,data=exercise)
+boxplot(Y ~ Subject,data=exercise)
+boxplot(Y ~ Day,data=exercise)
 ```
 
-$y_{ijkl} = \mu + \alpha_{i} + \beta_{j} + \tau_{k} + \epsilon_{ijkl}$
+The unit block treatment model is defined below:
 
-Here $\alpha$ represents the blocking factor day, $\beta$ representants the blocking factor subject and $\tau$ represents the treatment effect.
+$y_{ijk} = \mu + \alpha_{i} + \beta_{j} + \tau_{k} + \epsilon_{ijk}, \; \: \: i,k=\{1,2,3,4\}, \; \; j=\{1,2,3\}$
+
+Here the model has constant parameter $\mu$, $\alpha_{i}$ the blocking effect from day, $\beta_{j}$ the blocking effect from subject, $\tau_{k}$ the treatment effects and $\epsilon_{ijk} \sim N(0,\sigma^{2})$ the error of each
 
 ```{r}
 #creating model
 exercise.lm <- lm(Y ~ Day+Subject+Treatment,data=exercise)
 anova(exercise.lm)
 ```
+
+The treatment line of the ANOVA test compares models with and without the effects of treatment by testing $H_{0}: \tau_{1}=\tau_{2}=\tau_{3}=\tau_{4}=0$ vs $H_{1}:\tau_{w} \ne \tau_{r} \: \:\text{for} \: \: w \ne r$ with both models still including the blocking factors Day and Subject. We get a significant p-value of 0.03012, thus we reject $H_{0}$ that there is no treatment difference at the 5% level indicating there is a significant effect of Treatment. COMMENT ON THE BLOCKING EFFECTS.
 
 Estimating all pairwise differences.
 
@@ -50,9 +64,75 @@ exercise.emm <- emmeans::emmeans(exercise.lm, ~ Treatment)
 pairs(exercise.emm)
 ```
 
-only the coparison between treatment 1 and 2 is significant at the 5% level with a p-value of 0.0252 after adjustment of multiple comparisons using Tukey.
+Only the comparison between treatment 1 and 2 is significant at the 5% level with a p-value of 0.0252 after adjustment of multiple comparisons using Tukey.
 
 ```{r}
-#redsidual plots
-plot()
+#residual plots
+standres <- rstandard(exercise.lm)
+fitted <- fitted(exercise.lm)
+par(mfrow = c(1, 2), pty = "s")
+with(exercise, {
+  plot(Subject, standres, xlab = "Subject", ylab = "Standarised residuals")
+  plot(Day, standres, xlab = "Day", ylab = "Standarised residuals")
+ par(mfrow = c(1, 2), pty = "s") 
+  plot(fitted, standres, xlab = "Fitted value", ylab = "Standarised residuals")
+})
+
+par(pty = "s")
+qqnorm(standres, main = "")
+
+```
+
+The plots show no large residual values with absolute values greater than 2 (which would indicate poor fit of the model). There is some evidence of unequal variation (in particular subjects' 2 variation is much lower than that of subjects 1 and 3). However, there is no obvious patterns with respect to the fitted values against the standardised residuals with a random scattering of points in the plot. Finally, the points of the qqplot lie on a straight line which suggested the normality assumption is valid.
+
+```{r}
+#Adding variables 
+exercise <- exercise%>%
+  mutate(Duration=ifelse(Treatment==1,1,ifelse(Treatment==2,1,3)),
+         Speed=ifelse(Treatment==1,40,ifelse(Treatment==3,40,60)),
+         Pedal=ifelse(Treatment==1,"hand",ifelse(Treatment==4,"hand","foot")),
+         Duration= factor(Duration,levels=c(1,3),labels=c(1,3)),
+         Speed=factor(Speed,levels=c(40,60),labels=c(40,60)),
+         Pedal=factor(Pedal,levels=c("hand","foot"),labels=c("hand","foot")))
+```
+
+```{r}
+#Defined hand as the low level, speed=40 as low level and duration=1 as low level
+#all low levels of factor coded as -1 and all high levels as +1
+main_effect_contrasts <- matrix(c(-1,-1,-1,
+                                  1,1,-1,
+                                  1,-1,1,
+                                  -1,1,1,
+                                  -1,1,1,
+                                  -1,-1,-1,
+                                  1,1,-1,
+                                  1,-1,1,
+                                  1,-1,1,
+                                  -1,1,1,
+                                  -1,-1,-1,
+                                  1,1,-1)/6,c(12,3),byrow=T)
+#Each column is the main effect contrast for duration, speed and pedal respectively
+
+t(as.matrix(main_effect_contrasts)) %*% exercise$Y
+```
+
+Averaging the main effects over the blocking factors. The response decreases at the higher duration of 3 minutes by 3.167 compared to the lower duration of 1 minute. The response decreases at the higher speed of 60 rpm by 8.5 compared to the lower speed of 40 rpm. The response decreases when using the foot pedal by 10.167 compared to using the hand pedals.
+
+```{r}
+#Factor model
+#creating model
+factor.lm <- lm(Y ~ Duration+Speed+Pedal,data=exercise)
+anova(factor.lm)
+
+test.lm <- lm(Y ~ Day+Subject+Duration+Speed+Pedal,data=exercise)
+anova(test.lm)
+```
+
+I note that not all levels of the factor are present as a full factorial design for 3 different 2 level factors would have $2^{3}=8$ different treatments for each unique combination of the factors instead of 4.
+
+Using an ANOVA test both speed and Pedal were found to be significantly different from 0. This makes intuitive sense in regards to part a as we found that the only significant pairwise difference was between treatment 1 and 2. Treatment 1 and 2 vary in both speed and pedal level (with duration fixed) thus would expect for speed and pedal to be significant as the difference between treatment 1 and 2 was. (REWORD THIS)
+
+```{r}
+test.lm <- lm(Y ~ Day+Subject+Duration+Speed+Pedal,data=exercise)
+anova(test.lm)
 ```
