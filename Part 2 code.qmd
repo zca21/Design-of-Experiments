@@ -34,8 +34,6 @@ aggregate(Y~Subject,data=exercise,
           FUN = function(x) c(mean = mean(x), sd = sd(x)))
 aggregate(Y~Day,data=exercise,
           FUN = function(x) c(mean = mean(x), sd = sd(x)))
-#aggregate(Y~Subject,data=exercise,FUN = mean)
-#aggregate(Y~Day,data=exercise,FUN = mean)
 
 #plots
 boxplot(Y ~ Treatment,data=exercise)
@@ -115,7 +113,7 @@ exercise_contrast <- exercise%>%
 
 Adding the new factorial treatment effects gives the updated regression model below,
 
-$y_{ijk_{1}k_{2}k_{3}} = \mu + \alpha_{i} + \beta_{j} + \tau_{k_{1}}^{S} + \tau_{k_{2}}^{D} + \tau_{k_{3}}^{P} + \epsilon_{ijk_{1}k_{2}k_{3}}, \; \: \: k_{w}=\{L,H\}, \;\;\; w = \{1,2,3\} \; \; j=\{1,2,3\}$
+$y_{ijk_{1}k_{2}k_{3}} = \mu + \alpha_{i} + \beta_{j} + \tau_{k_{1}}^{S} + \tau_{k_{2}}^{D} + \tau_{k_{3}}^{P} + \epsilon_{ijk_{1}k_{2}k_{3}}, \; \: \: k_{1},k_{2},k_{3}=\{L,H\}, \;\;\; i = \{1,2,3,4\} \; \; j=\{1,2,3\}$
 
 where $y_{ijk_{1}k_{2}k_{3}}$ is the time taken in seconds for 50 heartbeats of subject $j$ exercising on day $i$ using a combination of speed set to $k_{1}$, duration set to $k_{2}$ and pedal set to $k_{3}$. $\mu$ is a constant parameter, $\alpha_{i}$ is the block effect of day $i$, $\beta_{j}$ is the block effect of subject $j$, $\tau^{S}_{k_{1}}$ is the speed, $\tau^{D}_{k_{2}}$ is the duration and $\tau^{P}_{k_{3}}$ is the pedal with each set to low or high defined by the index. The errors follow a normal distribution $\epsilon_{ijk_{1}k_{2}k_{3}} \sim N(0,\sigma^{2})$ with mean 0 and constant variance, and are assumed independent for different experimental units. In the model, Duration=1, Speed=40 and Pedal=hand are defined as the low level of the two-level factors and Duration=3, Speed=60 and Pedal=foot as the high level.
 
