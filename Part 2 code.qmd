@@ -1,5 +1,5 @@
 ---
-title: "Design of Experiments Coursework-34273638"
+title: "Design of Experiments Coursework, Student ID:34273638"
 format: html
 editor: visual
 ---
@@ -15,7 +15,7 @@ exercise <- data.frame(
  Treatment = c(1, 4, 3, 2, 2, 1, 4, 3, 3, 2, 1, 4),
  Y = c(45, 27, 27, 15, 18, 32, 23, 15, 23, 16, 28, 20)
 )
-
+#changing covariates to factors 
 exercise <- exercise%>%
   mutate(Subject = factor(Subject,levels = c(1:3),labels=c(1:3)),
          Day = factor(Day, levels=c(1:4), labels=c(1:4)),
@@ -24,10 +24,10 @@ exercise <- exercise%>%
 
 ### Part a
 
-Investigating differences between treatments and blocking factors Day and Subject:
+Investigating average differences between treatments and blocking factors Day and Subject:
 
 ```{r}
-#from 3.7 Q2
+#Finding mean and SD of treatent, subject and day variables
 aggregate(Y~Treatment,data=exercise,
           FUN = function(x) c(mean = mean(x), sd = sd(x)))
 aggregate(Y~Subject,data=exercise,
@@ -35,32 +35,27 @@ aggregate(Y~Subject,data=exercise,
 aggregate(Y~Day,data=exercise,
           FUN = function(x) c(mean = mean(x), sd = sd(x)))
 
-#plots
+#generating boxplots
 boxplot(Y ~ Treatment,data=exercise)
 boxplot(Y ~ Subject,data=exercise)
 boxplot(Y ~ Day,data=exercise)
-
-
-#with(exercise,
-#  interaction.plot(Treatment, Day, Subject, Y, xlab = 'Treatment', ylab = 'Yield', trace.label = 'Block')
-#)
 ```
 
-From the boxplots, treatment 1 appears to result in a much larger average response compared to the other 3 treatments. However, the design is not a randomised complete block design (RCBD) as each treatment is not replicated in each block, thus we do not know if these differences are due to block effects instead. This is plausible as the day blocking effect varies substantially between days, with day 4 having a much smaller average response compared to day 1,2 or 3.
+From the boxplots, treatment 1 has a much larger average response with a mean of 35 compared to the other 3 treatments with means 16.33, 21.67 and 23.33 for treatments 2,3 and 4 respectively. However, the design is not a randomised complete block design (RCBD) as each treatment is not replicated in each block, thus we do not know if these differences are due to block effects instead. This is plausible as the day blocking effect varies substantially between days, with day 4 having a much smaller average response of 16.67 compared to day 1,2 or 3 with means 28.67, 25 and 26 respectively. Thus, to compare treatments, block effects must be considered.
 
 The unit block treatment model with 2 blocking factors is defined below:
 
 $y_{ijk} = \mu + \alpha_{i} + \beta_{j} + \tau_{k} + \epsilon_{ijk}, \; \: \: i,k=\{1,2,3,4\}, \; \; j=\{1,2,3\}$
 
-where $y_{ijk}$ is the time taken in seconds for 50 heartbeats of subject $j$ exercising on day $i$ using treatment $k$, $\mu$ is a constant parameter, $\alpha_{i}$ is the block effect of day $i$, $\beta_{j}$ is the block effect of subject $j$ and $\tau_{k}$ is the effect of treatment $k$. The errors follow a normal distribution $\epsilon_{ijk} \sim N(0,\sigma^{2})$ with mean 0 and constant variance, and are assumed independent for different experimental units. I Note that not all $y_{ijk}$ exist due to incompleteness of the design.
+Where $y_{ijk}$ is the time taken in seconds for 50 heartbeats of subject $j$ exercising on day $i$ using treatment $k$. $\mu$ is a constant parameter, $\alpha_{i}$ is the block effect of day $i$, $\beta_{j}$ is the block effect of subject $j$ and $\tau_{k}$ is the effect of treatment $k$. The errors follow a normal distribution $\epsilon_{ijk} \sim N(0,\sigma^{2})$ with mean 0 and constant variance, and are assumed independent for different experimental units. I note that not all $y_{ijk}$ exist due to the incompleteness of the design.
 
 ```{r}
-#creating model
+#fitting model
 exercise.lm <- lm(Y ~ Day+Subject+Treatment,data=exercise)
 anova(exercise.lm)
 ```
 
-Fitting this model and performing an ANOVA test gives the above result. The treatment line of the ANOVA test compares models with and without the effects of treatment (but both models include blocking factors day and subject) by testing $H_{0}: \tau_{1}=\tau_{2}=\tau_{3}=\tau_{4}=0$ vs $H_{1}:\tau_{k} \ne 0$ for at least 1 $k \in \{1,2,3,4\}$. We get a significant p-value of 0.03012, thus we reject $H_{0}$ that there is no treatment difference at the 5% level indicating there is a significant effect of Treatment.
+Fitting this model and performing an ANOVA test gives the above result. The treatment line of the ANOVA test compares models with and without the effects of treatment (but both models include blocking factors day and subject) by testing $H_{0}: \tau_{1}=\tau_{2}=\tau_{3}=\tau_{4}=0$ vs $H_{1}:\tau_{k} \ne 0$ for at least 1 $k \in \{1,2,3,4\}$. We get a significant p-value of 0.03012, thus we reject $H_{0}$ that there is no treatment difference at the 5% level indicating there is a significant effect of treatment.
 
 ```{r}
 #Investigating pairwise differences
@@ -68,7 +63,7 @@ exercise.emm <- emmeans::emmeans(exercise.lm, ~ Treatment)
 pairs(exercise.emm)
 ```
 
-As there is a significant effect of treatment we now estimate all pairwise differences using an experiment-wise error rate of 5%. Only the comparison between treatment 1 and 2 is significant using Tukey to adjust for multiple comparisons.
+As there is a significant effect of treatment we now estimate all pairwise differences using an experiment-wise error rate of 5%. Only the comparison between treatment 1 and 2 is significant using the Tukey method to adjust for multiple comparisons.
 
 ```{r}
 #residual plots
@@ -76,18 +71,19 @@ standres <- rstandard(exercise.lm)
 fitted <- fitted(exercise.lm)
 par(mfrow = c(1, 2), pty = "s")
 with(exercise, {
+  plot(Treatment, standres, xlab = "Treatment", ylab = "Standarised residuals")
   plot(Subject, standres, xlab = "Subject", ylab = "Standarised residuals")
+   par(mfrow = c(1, 2), pty = "s") 
   plot(Day, standres, xlab = "Day", ylab = "Standarised residuals")
- par(mfrow = c(1, 2), pty = "s") 
   plot(fitted, standres, xlab = "Fitted value", ylab = "Standarised residuals")
 })
-
+#creating qq plot
 par(pty = "s")
 qqnorm(standres, main = "")
 
 ```
 
-The residual plots show no large residual values with absolute values greater than 2 (which would indicate poor fit of the model). There is some evidence of unequal variation (in particular subjects' 2 variation is much lower than that of subjects 1 and 3). However, there is no obvious patterns with respect to the fitted values against the standardised residuals with a random scattering of points in the index plot of the residuals. Finally, the points of the qq-plot lie on a straight line which suggested the normality assumption is valid.
+The plots of the residual against treatment, subject and day show no absolute values greater than 2 (which would indicate a poor fit of the model). Furthermore, there is no serious evidence of non-constant variance (but there is some evidence for subject with subjects' 2 variation is much lower than that of subjects 1 and 3). There is no obvious patterns with respect to the fitted values against the standardised residuals plot, with a random scattering of points observed. Finally, the points of the qq-plot lie on a straight line with only the largest and smallest point deviating slightly which suggested the normality assumption is valid. Thus overall, the assumptions of the model have been met.
 
 ### Part b
 
@@ -105,97 +101,48 @@ exercise <- exercise%>%
 exercise_contrast <- exercise%>%
   mutate(Duration = ifelse(Duration==1,-1,1),
          Speed = ifelse(Speed==40,-1,1),
-         Pedal = ifelse(Pedal=="hand",-1,1),
-         Duration= factor(Duration,levels=c(-1,1),labels=c(-1,1)),
-         Speed=factor(Speed,levels=c(-1,1),labels=c(-1,1)),
-         Pedal=factor(Pedal,levels=c(-1,1),labels=c(-1,1)))
+         Pedal = ifelse(Pedal=="hand",-1,1))
 ```
 
 Adding the new factorial treatment effects gives the updated regression model below,
 
 $y_{ijk_{1}k_{2}k_{3}} = \mu + \alpha_{i} + \beta_{j} + \tau_{k_{1}}^{S} + \tau_{k_{2}}^{D} + \tau_{k_{3}}^{P} + \epsilon_{ijk_{1}k_{2}k_{3}}, \; \: \: k_{1},k_{2},k_{3}=\{L,H\}, \;\;\; i = \{1,2,3,4\} \; \; j=\{1,2,3\}$
 
-where $y_{ijk_{1}k_{2}k_{3}}$ is the time taken in seconds for 50 heartbeats of subject $j$ exercising on day $i$ using a combination of speed set to $k_{1}$, duration set to $k_{2}$ and pedal set to $k_{3}$. $\mu$ is a constant parameter, $\alpha_{i}$ is the block effect of day $i$, $\beta_{j}$ is the block effect of subject $j$, $\tau^{S}_{k_{1}}$ is the speed, $\tau^{D}_{k_{2}}$ is the duration and $\tau^{P}_{k_{3}}$ is the pedal with each set to low or high defined by the index. The errors follow a normal distribution $\epsilon_{ijk_{1}k_{2}k_{3}} \sim N(0,\sigma^{2})$ with mean 0 and constant variance, and are assumed independent for different experimental units. In the model, Duration=1, Speed=40 and Pedal=hand are defined as the low level of the two-level factors and Duration=3, Speed=60 and Pedal=foot as the high level.
+Where $y_{ijk_{1}k_{2}k_{3}}$ is the time taken in seconds for 50 heartbeats of subject $j$ exercising on day $i$ using a combination of speed set to $k_{1}$, duration set to $k_{2}$ and pedal set to $k_{3}$. $\mu$ is a constant parameter, $\alpha_{i}$ is the block effect of day $i$, $\beta_{j}$ is the block effect of subject $j$, $\tau^{S}_{k_{1}}$ is the speed, $\tau^{D}_{k_{2}}$ is the duration and $\tau^{P}_{k_{3}}$ is the pedal with each set to low or high defined by the index. The errors follow a normal distribution $\epsilon_{ijk_{1}k_{2}k_{3}} \sim N(0,\sigma^{2})$ with mean 0 and constant variance, and are assumed independent for different experimental units. In the model, Duration=1, Speed=40 and Pedal=hand are defined as the low level of the two-level factors and Duration=3, Speed=60 and Pedal=foot as the high level.
 
 ```{r}
+#fitting factorial linear model
 fact.lm <- lm(Y ~ Subject + Day + Duration +Speed + Pedal, data = exercise_contrast)
 anova(fact.lm)
 ```
 
-Investigating just the main effects after controlling for block effects, performing an ANOVA test after fitting the model above found both Speed and Pedal factorial effects to be significantly different from 0 with p-values of 0.03738 and 0.01376 respectively.
+Investigating only the main effects and controlling for the block effects, performing an ANOVA test after fitting the model above found both Speed and Pedal factorial effects to be significantly different from 0 with p-values of 0.03738 and 0.01376 respectively.
 
-This makes intuitive sense as in part (a) we found that the only significant pairwise difference was between treatment 1 and 2 which varies by both speed and pedal factorial level (Treatment 1 has both set to low, meanwhile Treatment 2 has them both set to high). But does vary by duration (both treatments have duration set to low). Using principle of effect hierarchy thus main effects are more likely to have large effect than 2 factor interactions we can say the significant effect of treatment 1 compared to treatment 2 was due to factorial effects of speed and pedal changing and therefore they must also have a significant effect as was found. Furthermore, as no treatment comparsions in which duration changed level was significant, duration does not have a large and thus significant effect on the response (as seen by non-significant p-value).
+This makes intuitive sense as in part (a) we found that the only significant pairwise difference was between treatment 1 and 2 which varies only by both speed and pedal factorial level (Treatment 1 has both set to low, meanwhile Treatment 2 has both set to high). Using the principle of effect hierarchy which says that main effects are more likely to have large effect than 2 factor interactions we can say the significant effect of treatment 1 compared to treatment 2 was due to factorial effects of speed and/or pedal and therefore they are also likely to have a significant effect (as seen by significant p-values in ANOVA test). Furthermore, as no treatment comparisons in part (a) in which duration changed between the treatments being compared was significant, duration would not be expected to have a large and thus significant effect on the response (as was seen by the non-significant p-value in the ANOVA test above).
 
 ```{r}
+#reporting main factorial effect estimates
 2*coef(fact.lm)[7:9]
 ```
 
-The factorial effects are estimated to be -14.25, -20.75 and -3 for changing speed, pedal and duration respectively from low to high.
+Estimating the main effects of the factors as twice the corresponding regression parameters gives estimates of -7.125, -10.375 and -1.5 for changing speed, pedal and duration respectively from low to high.
 
 ### Part c
 
-Due to the design, the contrast used to estimate the two-factor interaction is exactly the same as the main effect of the factor not included in the interaction.
-
-This is due to only 4 treatments combinations being investigated in the deisgn, a full factorial design would have $2^{3}=8$ different treatments. Thus the design is a fractional factorial design with certain factorial effects being aliased. In particular, the aliasing scheme for main and two-factor interactions is S=PD, P=SD and D=DS for S the speed, P the pedal and D the duration. Therefore, to estimate the effect of the two-factor interaction we must assume the main effect of the third factor is zero (as we are actually estimating the linear combination of the aliased main effect and the two-factor interaction). I note this goes against the principle of effect hierarchy thus the estimates obtained are more likely to be biased due to the assumption that the main effect is equal to 0 being incorrect.
-
-With the factorial effects have been aliased with S=PD, P=SD and D=DS for S the speed, P the pedal and D the duration. Therefore, to estimate the effect of the two-factor interaction we must assume the main effect of the third factor is zero (as we are actually estimating the linear combination of the aliased main effect and the two-factor interaction). I note this goes against the principle of effect hierarchy thus the estimates obtained are more likely to be biased due to the main effect equal to 0 assumption being incorrect.
+Due to the design, the contrast used to estimate each of the two-factor interactions are exactly the same as the main effect of the factor not included in the interaction. This is due to only 4 treatment combinations being investigated in the design, where a full factorial design would have $2^{3}=8$ different treatments being investigated. Thus the design is a fractional factorial design with certain factorial effects being aliased. In particular, the aliasing scheme for main and two-factor interactions is S=PD, P=SD and D=DS for S the speed, P the pedal and D the duration. Therefore, to estimate the effect of the two-factor interaction we must assume the main effect of the third factor is zero (as the main effects reported in part (b) are actually the estimated linear combination of the aliased main effect and the two-factor interaction). I note this goes against the principle of effect hierarchy, as it is more likely the main effects are important compared to the two-factor interactions and this must be kept in mind when interpreting the results.
 
 ```{r}
-fact.npedal.lm <- lm(Y ~Subject + Day + Duration+Speed+Duration:Speed, data = exercise_contrast)
-
+#Investigating 2 factor interactions (showing that estimates are the same as those attainted in part(b) for the third factor)
+fact.npedal.lm <- lm(Y ~Subject + Day + Duration + Speed + Duration:Speed, data = exercise_contrast)
 2*coef(fact.npedal.lm)[9]
 
-fact.nspeed.lm <- lm(Y ~Subject + Day + Duration+Pedal+Duration:Pedal, data = exercise_contrast)
+fact.nspeed.lm <- lm(Y ~Subject + Day + Duration + Pedal + Duration:Pedal, data = exercise_contrast)
 2*coef(fact.nspeed.lm)[9]
 
-fact.nduration.lm <- lm(Y ~Subject + Day + Pedal+Speed+Pedal:Speed, data = exercise_contrast)
+fact.nduration.lm <- lm(Y ~Subject + Day + Pedal + Speed + Pedal:Speed, data = exercise_contrast)
 2*coef(fact.nduration.lm)[9]
 ```
 
-To estimate the two-factor interactions I exclude the third factor from the linear model and replace it with the two-factor interaction. The estimates of the two-factor interactions when both factors set to high are D:S = 41.5, D:P = 28.5 and P:S = 6 but these results should be interpreted with some skepticism due to the issues mentioned earlier. Furthermore, these results cannot be considered together as each model implies the other 2 are incorrect as a factor included in that model should be zero from the assumptions of the model. From part (b) the most likely model includes speed, ,pedal and their interaction as these were the two main effects that were significant (and thus non-zero) and due to principle of effect heredity their interaction is more likely to be important.
+Due to the aliasing scheme the estimates of the two-factor interactions are identical to the those of the third factor attained in part (b) with Duration:Speed = 10.375, Duration:Pedal = 7.125 and Pedal:Speed = 1.5 when pedal, speed and duration respectively are assumed to equal 0. This is made explicitly clear above by using linear models to estimate the two-factor interactions in which the third factor from the linear model in part (b) is excluded (assumed to equal 0) and replace with the two-factor interaction between the other 2 factors. The estimated effect of of the two-factor interactions found in these model is equal to the estimated main effect of the third factor found in part (b).
 
-## Older stuff (Check through this against current part b/c)
-
-Note that this model is not saturated as the each treatment that is observed occurs multiple times when not considering the blocking factors??
-
-This comparison may not be 'fair' as when estimating the main effects the combination of the other factors are different for the high and low levels of the factor interested in. Although each other factor occurs a equal number of times in its low and high category for each treatment being investigated.???
-
-\*Model uses 4 df to estimate the 3 factors and the intercept, then 3 for the 2 factor interactions, then for blocks uses 2??? (check this in chapter 5/6).
-
-```{r}
-## Extra stuff :P
-
-# #testing against models without factor (same as the anova test above but just doing explictly)
-# 
-# fact.lm.1 <- lm(Y ~ Subject + Day + Speed + Pedal, data = exercise_contrast)
-# fact.lm.2 <- lm(Y ~ Subject + Day + Duration + Pedal, data = exercise_contrast)
-# fact.lm.3 <- lm(Y ~ Subject + Day + Duration + Speed, data = exercise_contrast)
-# 
-# anova(fact.lm, fact.lm.1)
-# anova(fact.lm, fact.lm.2)
-# anova(fact.lm, fact.lm.3)
-
-#following code from section 5
-X <- model.matrix( ~ Subject + Day + (Duration+Speed+Pedal)^3, data = exercise_contrast)
-#note that there are 12 different blocks (3*4=12) and each one occurs once
-
-#Defined hand as the low level, speed=40 as low level and duration=1 as low level
-#all low levels of factor coded as -1 and all high levels as +1
-main_effect_contrasts <- matrix(c(-1,-1,-1,
-                                  1,1,-1,
-                                  1,-1,1,
-                                  -1,1,1,
-                                  -1,1,1,
-                                  -1,-1,-1,
-                                  1,1,-1,
-                                  1,-1,1,
-                                  1,-1,1,
-                                  -1,1,1,
-                                  -1,-1,-1,
-                                  1,1,-1)/6,c(12,3),byrow=T)
-#Each column is the main effect contrast for duration, speed and pedal respectively
-
-t(as.matrix(main_effect_contrasts)) %*% exercise$Y
-
-#Averaging the main effects over the blocking factors. The response decreases at the higher duration of 3 minutes by 3.167 compared to the lower duration of 1 minute. The response decreases at the higher speed of 60 rpm by 8.5 compared to the lower speed of 40 rpm. The response decreases when using the foot pedal by 10.167 compared to using the hand pedals.
-```
+I note these two-factor interactions are mutually exclusive as the models used to estimate them have conflicting assumptions (each model implies the other 2 are incorrect as a factor included in the other models are assumed zero in the model being considered). Using the principle of effect heredity the most likely model which includes an interaction is the model including the interaction between Speed and Pedal as both the main effects were found to be large thus the interaction is also likely important.
