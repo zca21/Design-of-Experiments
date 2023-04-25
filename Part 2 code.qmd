@@ -17,7 +17,7 @@ exercise <- data.frame(
 )
 #changing covariates to factors 
 exercise <- exercise%>%
-  mutate(Subject = factor(Subject,levels = c(1:3),labels=c(1:3)),
+  dplyr::mutate(Subject = factor(Subject,levels = c(1:3),labels=c(1:3)),
          Day = factor(Day, levels=c(1:4), labels=c(1:4)),
          Treatment = factor(Treatment, levels=c(1:4),labels=c(1:4)))
 ```
@@ -90,7 +90,7 @@ The plots of the residuals against either treatment, subject or day show no abso
 ```{r}
 #Adding variables of two level factors
 exercise <- exercise%>%
-  mutate(Duration=ifelse(Treatment==1,1,ifelse(Treatment==2,1,3)),
+  dplyr::mutate(Duration=ifelse(Treatment==1,1,ifelse(Treatment==2,1,3)),
          Speed=ifelse(Treatment==1,40,ifelse(Treatment==3,40,60)),
          Pedal=ifelse(Treatment==1,"hand",ifelse(Treatment==4,"hand","foot")),
          Duration= factor(Duration,levels=c(1,3),labels=c(1,3)),
@@ -99,7 +99,7 @@ exercise <- exercise%>%
 
 #Changing levels to high=+1 or low=-1
 exercise_contrast <- exercise%>%
-  mutate(Duration = ifelse(Duration==1,-1,1),
+  dplyr::mutate(Duration = ifelse(Duration==1,-1,1),
          Speed = ifelse(Speed==40,-1,1),
          Pedal = ifelse(Pedal=="hand",1,-1))
 ```
@@ -131,15 +131,22 @@ Estimating the main effects of the factors as twice the corresponding regression
 
 ```{r}
 #calculating unscaled interation contrasts
-exercise_int_contrast <- data.frame(model.matrix(~ . +Duration:Speed+Duration:Pedal+Speed:Pedal , exercise_contrast[,5:7]))[,2:7]
+exercise_all_contrasts <- exercise_contrast%>%
+  dplyr::mutate(DS=Duration * Speed,
+                DP= Duration * Pedal,
+                SP= Speed * Pedal,
+                SPD= Speed * Pedal * Duration)%>%
+  dplyr::select(!c(Subject,Day,Treatment))
 
 knitr::kable(
- exercise_int_contrast,
- col.names = c("D","S","P","D:S","D:P","S:P"),
- caption = "unscaled contrasts for main effects and two-factor interactions")
+ exercise_all_contrasts,
+ col.names = c("Y","D","S","P","D:S","D:P","S:P","S:P:D"),
+ caption = "unscaled contrasts for all factorial effects when not considering blocks")
 ```
 
-Due to the design, the contrasts used to estimate each of the two-factor interactions are exactly the same as the main effect of the factor not included in the interaction (see table above). This is due to only 4 treatment combinations being investigated, whereas a full factorial design would investigate \$2\^{3}=8\$ different treatments. Thus the design is a fractional factorial design with certain factorial effects aliased. In particular, the aliasing scheme for main and two-factor interactions is S=PD, P=SD and D=PS for S the speed, P the pedal and D the duration. Therefore, to estimate the effect of the two-factor interaction we must assume the main effect of the third factor is zero (as the main effects reported in part (b) are actually the estimated linear combination of the main effect and the two-factor interaction). I note this goes against the principle of effect hierarchy, as it is more likely main effects are important compared to two-factor interactions which must be kept in mind when interpreting the results.
+The design only investigates 4 treatment combinations, whereas a full factorial design would investigate \$2\^{3}=8\$ different treatment combinations. Thus the design is a fractional factorial design with certain factorial effects aliased. In particular, the interaction SPD is aliased with the mean, thus the defining relation is I=SPD (for S the speed, P the pedal and D the duration). From this, the factorial effects of the two-factor interactions are aliased with the main effect of the factor not included in the interaction. This can be seen in the table above as only a subset of the SPD interaction is included (where SPD contrast equals 1) and the two-factor interaction contrasts are identical to the main effect contrast not included in the interaction. In particular, the aliasing scheme is I=SPD, S=PD, P=SD and D=PS. I note the table above does not consider blocking, however as the contrasts of the main effect and associated two-factor interaction are the same, considering blocks won't change this relation only what the estimate is.
+
+To estimate the effect of the two-factor interaction we must assume the main effect of the third factor is zero (as the main effects reported in part (b) are actually the estimated linear combination of the main effect and the two-factor interaction). I note this goes against the principle of effect hierarchy, as it is more likely main effects are important compared to two-factor interactions which must be kept in mind when interpreting the results.
 
 ```{r}
 #Investigating 2 factor interactions (showing that estimates are the same as those attainted in part(b) for the third factor)
