@@ -1,0 +1,222 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+# Revision document for Design of experiments
+
+Module is taking a problem, converting into statistical model, asking what we want to estimate and how this does this variance relate to x.
+
+```{r}
+setwd("~/Desktop/Design of Experiments/Revision code")
+source("datasetCode.R") #Loading in datasets
+```
+
+## Chapter 1:
+
+1.  **Units** - Basic element that a treatment can be applied to (to produce a response)
+
+2.  Use assumption of **constant variance** $\sigma^{2}$
+
+3.  **Principles of experimentation:** Replication (enables estimation of background variation), randomisation (protects against bias), stratification (blocking) (if units hetreogenous)
+
+**Efficiency** useful when can't use optimal design (practical reasons such as ethics etc)
+
+## Chapter 2:
+
+**Completely Randomised Designs**, means we can use **contrasts** to compare treatments and making sure to adjust for **multiple comparisons**. The **difference** between 2 treatments is constant (concept of **comparison**). Below is why contrasts can be used to estimate mean treatment differences with the system of LHS equations from the **reduced normal equations** for $\tau$.
+
+$$
+\hat{\tau}_{i} - \hat{\tau}_{w} = \bar{y}_{i.} - \bar{y}_{..} \rightarrow \sum_{i=1}^{t}c_{i}\hat{\tau}_{i} = \sum_{i=1}^{t}c_{i}\bar{y}_{i.}
+$$
+
+Note when calculating if contrast significant the SE is $s\sqrt{\sum_{i=1}^{t}c_{i}^{2}/n_{i}}$, thus if not all pairwise contrasts can't use same standard error!
+
+For **Tukey** adjustment the df are t & n-t (residual df after fitting regression model)
+
+```{r}
+pulp.lm <- lm(reflectance ~ operator, data=pulp) #creating linear model
+anova(pulp.lm) #checking that treatment is significant 
+
+pulp.emm <- emmeans::emmeans(pulp.lm, ~ operator) #looking at contrasts
+pairs(pulp.emm) #if want to no family-wise adjustment or use bonferroni use adjust argument
+
+contrast1v23.emmc <- function(levs)  # creating own contrast
+  data.frame('t1 v avg t2 t3' = c(1, -.5, -.5, 0))
+emmeans::contrast(pulp.emm, 'contrast1v23')
+```
+
+Optimal treatment allocation and overall size of experiment functions (note can be easier to just do by hand)
+
+```{r}
+opt_ni <- function(C, n) { #C is matrix of contrasts and n is total size of experiment
+  CtC <- t(C) %*% C
+  n * sqrt(diag(CtC)) / sum(sqrt(diag(CtC)))
+} 
+
+crd_var <- function(C, n) {
+  CtC <- t(C) %*% C
+  sum(diag(CtC) / n)
+} 
+
+opt_n <- function(cv, prop, snr, target) target ^ 2 * c(t(cv) %*% diag( 1 / prop) %*% cv) / snr ^ 2
+```
+
+## Chapter 3:
+
+-   Remember to adjust for multiple testing using **Bonferroni** if not pairwise differences
+
+-   For BIBDs require $r=\frac{bk}{t}$ and $\lambda = r\frac{k-1}{t-1}$ to be integers, also have $\lambda (t-1) = r(k-1)$
+
+-   BIBDs have larger variance than RCBD (RCBD is more efficent)
+
+We can use `lm` and `emmeans` as before to find significant values but must **remember to adjust for multiple testing**.
+
+```{r}
+tyre.lm <- lm(wear ~ block + compound, data=tyre)
+tyre.emm <- emmeans::emmeans(tyre.lm, ~ compound)
+pairs(tyre.emm)
+```
+
+`ibd::bibd` allows quick check to see if design can be a BIBD (and stores smaller possible BIBD designs for set parameters than naive construction)
+
+```{r}
+ibd::bibd(v=, b=, r=,k=,lambda=) #note v is the treatment
+```
+
+## Chapter 4:
+
+Without replication model is **saturated,** thus cannot estimate $\hat{\sigma^{2}}$. Use the same model as CRD but now i goes to$2^{f}$ and j=r.
+
+Contrasts need to be scaled (to calculated the average effect, as not working with treatment means to start with as before) - Scaled by $2^{f-1}$.
+
+$$
+var\{ME(A)\}=\frac{4\sigma^{2}}{n}
+$$
+
+Interactions are **half** times the difference of main effect of factor 1 with factor 2 set high and low respectively (so scaling is correct) - as conditional main effects are sub-contrasts so need to multiply by half to get to correct scaling. **Each contrast is scaled by** $\frac{1}{2^{f-1}}$.
+
+```{r}
+desilylation.lm <- lm(yield ~ (.)^4, data = desilylation) #quick way to estimate all coefs
+coef(desilylation.lm)[-1]*2 #remember to mult by 2 to find factorial effect
+```
+
+Can also perform **approximate hypothesis testing** with Lenth's method using **pseudo standard error**
+
+$$
+PSE = 1.5 *median_{|\hat{\theta_{i}}|\lt 2.5s_{0}}|\hat{\theta_{i}}|
+$$
+
+Gives a consistent and **robust** (to outliers) estimator of the standard deviation. We can construct test statistics from this but the distribution is found using simulation (p-values different slightly each time run). Can use `unrepx::hnplot`to view results graphically. Note, we make use of fact that the factorial effects are **normally distributed** with the variance unknown and covariance =0 between effects as contrasts are orthogonal thus $\hat{\theta_{j}}$'s form a sample of independently normally distributed RVs.
+
+```{r}
+eff_est <- coef(desilylation.lm)[-1]*2 #takes effect estimates as input
+unrepx::eff.test(eff_est, method = "Lenth") #caculates p-values and also adjusted to account for multiple testing
+unrepx::hnplot(eff_est, method = "Lenth", horiz = F, ID = 2.7, alpha = 0.05) #graphic results
+```
+
+For replicated designs we 'stack' each element of contrast (if r=3 where a single 1 is now there are 3 in a row) and response is also stacked e.g. have $y_{i1}, y_{i2}, y_{i3}$ one after each other in the response vector giving,
+
+$$
+\hat{\theta} = \frac{1}{r}\tilde{C}^{T}\boldsymbol{y}
+$$
+
+By setting the design matrix $X=\frac{2^{f}}{2}\tilde{C}$ we get the result that allows us to estimate the factorial effects as 2 times the regression coefficients. I note that $X$ is unscaled contrast coefficients.
+
+Each factorial effect contributes $n\hat{\beta_{j}^{2}}$ to the regression sum of squares (remember $\hat{\beta}$ is the regression coefficient not the factorial effect). Note when running ANOVA $X = [1_{n} | X]$ basically includes intercept column.
+
+## Chapter 5:
+
+Assume m groups are more **homogeneous.** It Is possible to partially confound effects with blocks this means can estimate those effects but have higher variance (Look at this in written notes) -
+
+We can use `FrF2` to generate blocked factorial designs
+
+```{r}
+library(FrF2) #need to load package for this
+example.block <- FrF2::FrF2(nruns = 8, nfactors = 3, blocks = 4, 
+                          alias.info = 3, randomize = F,alias.block.2fis=T) #add alias.block.2fis=T statement to allow frf2 to confound 2 factor interactions
+design.info(example.block )$aliased.with.blocks
+
+example.block.2 <- FrF2::FrF2(nruns = 2^8, nfactors = 8, #can also choose effects to confound
+                     alias.info = 3, randomize = F, blocks = c("ACEGH", "BCFGH", "BDEGH"))
+```
+
+Blocked effect is **orthogonal** (has zero inner product) with all **clear** effects, (this makes intuitive sense as the block vector is constant for each block and effect contrasts have equal number of -1 and +1 values). We can calculate the regression coefficients for the **clear** effects as those below ($X$ is the n by d design matrix with $d=2^{f}-b$ ) due to the orthogonality.
+
+$$
+\hat{\beta}=\frac{1}{n}X^{T}\boldsymbol{y}
+$$
+
+Can estimate clear effects the same as for normal factorial designs (remember to mult coefs by 2)
+
+## Chapter 6:
+
+Create q treatment **subsets** (using same method as chapter 5) and investigate 1 subset of size $2^{f-q}$
+
+Can use `FrF2` to generate and view the aliasing scheme
+
+```{r}
+spring.lm <- lm(height ~ (.)^5, data = spring)
+FrF2::aliases(spring.lm) #finding aliasing string
+
+t(alias(spring.lm)$Complete) #alias matrix
+
+ffb.example <- FrF2::FrF2(nruns = 16, nfactors = 6, #fractional blocked factorial design
+                          generators = c("ABC", "ABD"), 
+                          blocks =c("ACD", "BCD"), randomize = F, 
+                          alias.block.2fis = T, alias.info = 3)
+
+design.info(ffb.example)$aliased
+design.info(ffb.example)$aliased.with.blocks #can see confounded with blocks as before (this time whole string)
+```
+
+Note if do not specify `generators` but only `nruns` and `nfactors`, `FrF2` will create a experiment with minimum **aberration**.
+
+Each aliasing string contains $2^{q}$ words (use `aliases` function in FrF2 to find this) - any factorial effect in the string is only estimable if all other effects in the string are **assumed zero.** Use **alias matrix A** to study this. A is the bias due to assuming an incorrect model (as we fit a subset of parameters, one from each string, to the data instead of all parameters) regression parameter is biased by other factorial effects in string. A matrix will have entries +1, 0 or -1.
+
+$$
+E(\hat{\boldsymbol{\beta_{1}}}) = \boldsymbol{\beta_{1}} + A\boldsymbol{\beta_{2}} 
+$$
+
+We can generate the alias matrix using `alias`
+
+```{r}
+t(alias(spring.lm)$Complete)
+```
+
+Overall there are $2^{f-q}$ strings with $2^{q}$ words in each. I note that `Frf2` uses the f-q **base factors** thus to specify the generators only need to specify A,B,C,D (not E and plus).
+
+Analysis can proceed as in chapter 4 assuming only one factorial effect in each alias string is non-zero, we can also choose not to estimate some higher order effects (strings only including higher order effects) and instead use them to estimate the $\sigma^{2}$. Note each string contributes 1 df thus there are $2^{f-q}-1$ df used in estimating effects (-1 due to defining relation not being an factorial effect).
+
+When also including m blocks we confound $2^{m}-1$ strings with blocks (all effects within string are confounded.
+
+## Notes
+
+Can use `cor` to see if columns are **orthogonal**
+
+```{r}
+cor(model.matrix( ~ Block + (A + B + C)^3, data = example.design.a)) #can see blocks are not orthogonal to ABC interaction
+```
+
+Can use `model.matrix` to make matrix of unscaled contrasts
+
+```{r}
+C <- model.matrix(~(.)^5,example.design.2) #note only 16 runs (q=1)
+C[,32] #can see ABCDE interaction aliased with the mean
+```
+
+Can quickly find aliasing string using `lm` and `aliases`
+
+```{r}
+lm.object <- lm(height~(.)^5,data=spring) #if dont care about response can use rnorm(n)
+FrF2::aliases(lm.object)
+```
+
+-   Use **hadamard** product to investigate what effects are **confounded**, **aliased** or used in the d**efining relation**
+
+-   Always write **resolution** in roman numerials
+
+-   Use subscript to refer to entries in **word length patterns** (e.g. $w_{3}(i)>w_{3}(ii)$) for design i with more words in its's defining relation of length 3 compared to design ii (choose ii under aberration)
+
+-   Use `FrF2` to find best resolution design and and then add `blocks` to find a fractional blocked design quickly and then `design.info` to find aliased and confounded effects
