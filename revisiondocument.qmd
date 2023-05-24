@@ -9,7 +9,7 @@ editor: visual
 Module is taking a problem, converting into statistical model, asking what we want to estimate and how this does this variance relate to x.
 
 ```{r}
-setwd("~/Desktop/Design of Experiments/Revision code")
+setwd("~/Desktop/Design of Experiments/CW/Design-of-Experiments")
 source("datasetCode.R") #Loading in datasets
 ```
 
@@ -19,19 +19,19 @@ source("datasetCode.R") #Loading in datasets
 
 2.  Use assumption of **constant variance** $\sigma^{2}$
 
-3.  **Principles of experimentation:** Replication (enables estimation of background variation), randomisation (protects against bias), stratification (blocking) (if units hetreogenous)
+3.  **Principles of experimentation:** **Replication** (enables estimation of background variation), **randomisation** (protects against bias), **stratification** (blocking) (if units heterogeneous)
 
 **Efficiency** useful when can't use optimal design (practical reasons such as ethics etc)
 
 ## Chapter 2:
 
-**Completely Randomised Designs**, means we can use **contrasts** to compare treatments and making sure to adjust for **multiple comparisons**. The **difference** between 2 treatments is constant (concept of **comparison**). Below is why contrasts can be used to estimate mean treatment differences with the system of LHS equations from the **reduced normal equations** for $\tau$.
+**Completely Randomised Designs**, means we can use **contrasts** to compare treatments and making sure to adjust for **multiple comparisons**. The **difference** between 2 treatments is constant (concept of **comparison**). Below is why contrasts can be used to estimate mean treatment differences with the system of LHS equations from the **reduced normal equations** for $\tau$. I note in this approach we do not set a dummy variable instead studying which **linear combinations** of treatments we can estimate.
 
 $$
 \hat{\tau}_{i} - \hat{\tau}_{w} = \bar{y}_{i.} - \bar{y}_{..} \rightarrow \sum_{i=1}^{t}c_{i}\hat{\tau}_{i} = \sum_{i=1}^{t}c_{i}\bar{y}_{i.}
 $$
 
-Note when calculating if contrast significant the SE is $s\sqrt{\sum_{i=1}^{t}c_{i}^{2}/n_{i}}$, thus if not all pairwise contrasts can't use same standard error!
+Note when calculating if contrast significant the SE is $s\sqrt{\sum_{i=1}^{t}c_{i}^{2}/n_{i}}$^, thus if not all pairwise contrasts can't use same standard error! Also can use^ $\boldsymbol{c}^{T}\hat{\boldsymbol{\tau}}=\sum_{i=1}^{t}c_{i}\bar{y}_{i}$ when deriving variance of contrasts.
 
 For **Tukey** adjustment the df are t & n-t (residual df after fitting regression model)
 
@@ -47,7 +47,11 @@ contrast1v23.emmc <- function(levs)  # creating own contrast
 emmeans::contrast(pulp.emm, 'contrast1v23')
 ```
 
-Optimal treatment allocation and overall size of experiment functions (note can be easier to just do by hand)
+Optimal treatment allocation and overall size of experiment (this is for one contrast, thus repeat and get different n's for different contrasts) functions (note can be easier to just do by hand). Note use **Lagrange multipliers** to find the optimal design.
+
+$$
+n_{i}=\frac{\sqrt{\sum_{l=1}^{p}c_{li}^{2}}}{\sum_{i=1}^{t}\sqrt{\sum_{l=1}^{p}c_{li}^2}}n, \;\;\;\;\; n=T^{2}\frac{\sum_{i=1}^{t}c_{i}^{2}/w_{i}}{d^{2}}
+$$
 
 ```{r}
 opt_ni <- function(C, n) { #C is matrix of contrasts and n is total size of experiment
@@ -69,7 +73,13 @@ opt_n <- function(cv, prop, snr, target) target ^ 2 * c(t(cv) %*% diag( 1 / prop
 
 -   For BIBDs require $r=\frac{bk}{t}$ and $\lambda = r\frac{k-1}{t-1}$ to be integers, also have $\lambda (t-1) = r(k-1)$
 
--   BIBDs have larger variance than RCBD (RCBD is more efficent)
+-   BIBDs have larger variance than RCBD (RCBD is more efficient)
+
+-   Reduced normal equations have same form as CRD $X_{2|1}^{T}X_{2|1}\boldsymbol{\hat{\tau}}=X_{2|1}^{T}\boldsymbol{y}$ just a different $X_{2|1}$ matrix
+
+-   estimation of contrast for RCBD takes same form as CRD (point and variance calculated in the same way)
+
+-   $\sigma^{2}$ in RCBD represents uncontrolled variation in response **among all units within a common block**, this is due to **orthogonality** of the block and treatment parameters. Can check this as adequate condition is $N=\frac{1}{n}\boldsymbol{n}\boldsymbol{k}^{T}$, (where $\boldsymbol{n}$ is vector of treatment replications and $\boldsymbol{k}$ is vector of block sizes).
 
 We can use `lm` and `emmeans` as before to find significant values but must **remember to adjust for multiple testing**.
 
@@ -82,12 +92,12 @@ pairs(tyre.emm)
 `ibd::bibd` allows quick check to see if design can be a BIBD (and stores smaller possible BIBD designs for set parameters than naive construction)
 
 ```{r}
-ibd::bibd(v=, b=, r=,k=,lambda=) #note v is the treatment
+ibd::bibd(v=4, b=4, r=2,k=2,lambda=1) #note v is the treatment
 ```
 
 ## Chapter 4:
 
-Without replication model is **saturated,** thus cannot estimate $\hat{\sigma^{2}}$. Use the same model as CRD but now i goes to$2^{f}$ and j=r.
+Without replication model is **saturated,** thus cannot estimate $\hat{\sigma^{2}}$. Use the same model as CRD but now i goes to $2^{f}$ and j=r (number of replications).
 
 Contrasts need to be scaled (to calculated the average effect, as not working with treatment means to start with as before) - Scaled by $2^{f-1}$.
 
@@ -124,11 +134,11 @@ $$
 
 By setting the design matrix $X=\frac{2^{f}}{2}\tilde{C}$ we get the result that allows us to estimate the factorial effects as 2 times the regression coefficients. I note that $X$ is unscaled contrast coefficients.
 
-Each factorial effect contributes $n\hat{\beta_{j}^{2}}$ to the regression sum of squares (remember $\hat{\beta}$ is the regression coefficient not the factorial effect). Note when running ANOVA $X = [1_{n} | X]$ basically includes intercept column.
+Each factorial effect contributes $n\hat{\beta_{j}^{2}}$ to the regression sum of squares (remember $\hat{\beta}$ is the regression coefficient not the factorial effect). Note when running ANOVA $X = [1_{n} | X]$ basically includes intercept column. Note if remove factorial effects to estimate $\sigma^{2}$ the MS of this is the SS of the factorial effects removed.
 
 ## Chapter 5:
 
-Assume m groups are more **homogeneous.** It Is possible to partially confound effects with blocks this means can estimate those effects but have higher variance (Look at this in written notes) -
+Assume m groups are more **homogeneous.** It Is possible to partially confound effects with blocks this means can estimate those effects but have higher variance (variance of estimators of effects will be inflated). This is generally not desirable as prefer to completely confound a smaller number of higher-order effects (greater clarity and don't lose info about lower order effects).
 
 We can use `FrF2` to generate blocked factorial designs
 
@@ -171,9 +181,9 @@ design.info(ffb.example)$aliased
 design.info(ffb.example)$aliased.with.blocks #can see confounded with blocks as before (this time whole string)
 ```
 
-Note if do not specify `generators` but only `nruns` and `nfactors`, `FrF2` will create a experiment with minimum **aberration**.
+Note if do not specify `generators` but only `nruns` and `nfactors`, `FrF2` will create a experiment with minimum **aberration**. \[It also chooses fraction defined by each generator equal to +1\].
 
-Each aliasing string contains $2^{q}$ words (use `aliases` function in FrF2 to find this) - any factorial effect in the string is only estimable if all other effects in the string are **assumed zero.** Use **alias matrix A** to study this. A is the bias due to assuming an incorrect model (as we fit a subset of parameters, one from each string, to the data instead of all parameters) regression parameter is biased by other factorial effects in string. A matrix will have entries +1, 0 or -1.
+Each aliasing string contains $2^{q}$ words (use `aliases` function in FrF2 to find this) - any factorial effect in the string is only estimable if all other effects in the string are **assumed zero.** Use **alias matrix A** to study this. $A=(X_{1}^{T}X_{1})^{-1}X_{1}^{T}X_{2}$ is the bias due to assuming an incorrect model (as we fit a subset of parameters, one from each string, to the data instead of all parameters) regression parameter is biased by other factorial effects in string. A matrix will have entries +1, 0 or -1 with $\beta_{2}$ the coef not fitted (not included in the submodel).
 
 $$
 E(\hat{\boldsymbol{\beta_{1}}}) = \boldsymbol{\beta_{1}} + A\boldsymbol{\beta_{2}} 
@@ -220,3 +230,53 @@ FrF2::aliases(lm.object)
 -   Use subscript to refer to entries in **word length patterns** (e.g. $w_{3}(i)>w_{3}(ii)$) for design i with more words in its's defining relation of length 3 compared to design ii (choose ii under aberration)
 
 -   Use `FrF2` to find best resolution design and and then add `blocks` to find a fractional blocked design quickly and then `design.info` to find aliased and confounded effects
+
+-   The word length pattern looks at words up to length $f$
+
+#### F-test
+
+To calculate the **SS** use the difference in the RSS between null and model (or between models if comparing nested models). Can calculate extra SS due to a model by comparing SS in full model to model with parameters of model interested in removed. F test has df of the models compared (numerator df is the first).
+
+1.  For **CRD** f-test the df of freedom are **t-1** and **n-t** for treatments and residual respectively
+
+2.  For basic **blocked** models (RCBD, BIBD) df are **b-1**, **t-1**,**n-b-t+1** for blocks, treatments and residual
+
+#### From exercises
+
+-   When looking at average differences can just average then means of the treatments being included in the same group then find difference (for CRD at least).
+
+-   Remember still want to **check lm diagnostics** for models
+
+-   For **repeated factorial designs** variance is simply scaled using $\frac{4\sigma^{2}}{n}$ with n equal to $r*2^{f}$
+
+-   Remember to remove NA values from lm coef object before using function to calculate significance using Lenths method
+
+#### Good exercises to look over:
+
+Exercise 2, q4
+
+Exercise 4, question 3
+
+Exercise 6, q4
+
+## Revision Week stuff:
+
+-   When constructing trts in one block for generic BIBD design look at size of block and wirte down first k treatments (i.e. trts 1,2,...,k)
+
+-   Remember form of $c_{j}$ in factorial models when calculating variance (as get $(\frac{1}{2^{f-1}})^{2}$ for each contrasts variance summed up for $2^{f}$ treatments)
+
+-   $\sigma^{2}$ may be smaller if block size is smaller
+
+-   BIBD has advantage over blocked factorial designs is that can estimate all factorial effects
+
+-   For long tedious calc to find treatments in a block can use FrF2
+
+-   Can use resolution of design to figure out df of design (as for res 5 all main and 2 factor ints are clear thus work out main and 2 ints estimated (take out any aliased with blocks) and rest will be for higher order ints)
+
+-   Can look at how many alias strings you have to prove can't run a certain experiment
+
+-   Can look at alias string to know what blocks not to pick (ie if ME aliased with certain higher order effect dont want to choose that effect for block)
+
+#### Matrix stuff :(
+
+-   When looking at reduced noraml equations can sometimes convert matrices into treatment/incidence matrices $N$ and \$N^{T}N\$, note that^ $N=X_{2}^{T}X_{1}$
