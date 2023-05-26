@@ -183,7 +183,7 @@ design.info(ffb.example)$aliased.with.blocks #can see confounded with blocks as 
 
 Note if do not specify `generators` but only `nruns` and `nfactors`, `FrF2` will create a experiment with minimum **aberration**. \[It also chooses fraction defined by each generator equal to +1\].
 
-Each aliasing string contains $2^{q}$ words (use `aliases` function in FrF2 to find this) - any factorial effect in the string is only estimable if all other effects in the string are **assumed zero.** Use **alias matrix A** to study this. $A=(X_{1}^{T}X_{1})^{-1}X_{1}^{T}X_{2}$ is the bias due to assuming an incorrect model (as we fit a subset of parameters, one from each string, to the data instead of all parameters) regression parameter is biased by other factorial effects in string. A matrix will have entries +1, 0 or -1 with $\beta_{2}$ the coef not fitted (not included in the submodel).
+Each aliasing string contains $2^{q}$ words (use `aliases` function in FrF2 to find this) - any factorial effect in the string is only estimable if all other effects in the string are **assumed zero.** Use **alias matrix A** to study this. $A=(X_{1}^{T}X_{1})^{-1}X_{1}^{T}X_{2}$ is the bias due to assuming an incorrect model (as we fit a subset of parameters, one from each string, to the data instead of all parameters) regression parameter is biased by other factorial effects in string. A matrix will have entries +1, 0 or -1 with $\beta_{2}$ the coef not fitted (not included in the sub-model).
 
 $$
 E(\hat{\boldsymbol{\beta_{1}}}) = \boldsymbol{\beta_{1}} + A\boldsymbol{\beta_{2}} 
@@ -227,9 +227,9 @@ FrF2::aliases(lm.object)
 
 -   Use **hadamard** product to investigate what effects are **confounded**, **aliased** or used in the d**efining relation**
 
--   Always write **resolution** in roman numerials
+-   Always write **resolution** in roman numerals
 
--   Use subscript to refer to entries in **word length patterns** (e.g. $w_{3}(i)>w_{3}(ii)$) for design i with more words in its's defining relation of length 3 compared to design ii (choose ii under aberration)
+-   Use subscript to refer to entries in **word length patterns** (e.g. $w_{3}(i)>w_{3}(ii)$) for design i with more words in it's defining relation of length 3 compared to design ii (choose ii under aberration)
 
 -   Use `FrF2` to find best resolution design and and then add `blocks` to find a fractional blocked design quickly and then `design.info` to find aliased and confounded effects
 
@@ -279,7 +279,7 @@ Quiz 2 Q1
 
 ## Revision Week stuff:
 
--   When constructing trts in one block for generic BIBD design look at size of block and wirte down first k treatments (i.e. trts 1,2,...,k)
+-   When constructing trts in one block for generic BIBD design look at size of block and write down first k treatments (i.e. trts 1,2,...,k)
 
 -   Remember form of $c_{j}$ in factorial models when calculating variance (as get $(\frac{1}{2^{f-1}})^{2}$ for each contrasts variance summed up for $2^{f}$ treatments)
 
@@ -287,17 +287,17 @@ Quiz 2 Q1
 
 -   BIBD has advantage over blocked factorial designs is that can estimate all factorial effects
 
--   For long tedious calc to find treatments in a block can use FrF2
+-   For long tedious calculations to find treatments in a block can use FrF2
 
--   Can use resolution of design to figure out df of design (as for res 5 all main and 2 factor ints are clear thus work out main and 2 ints estimated (take out any aliased with blocks) and rest will be for higher order ints)
+-   Can use resolution of design to figure out df of design (as for res 5 all main and 2 factor interactions are clear thus work out main and 2 interactions estimated (take out any aliased with blocks) and rest will be for higher order interactions)
 
 -   Can look at how many alias strings you have to prove can't run a certain experiment
 
--   Can look at alias string to know what blocks not to pick (ie if ME aliased with certain higher order effect dont want to choose that effect for block)
+-   Can look at alias string to know what blocks not to pick (ie if ME aliased with certain higher order effect don't want to choose that effect for block)
 
 #### Matrix stuff :(
 
--   When looking at reduced noraml equations can sometimes convert matrices into treatment/incidence matrices $N$ and \$N^{T}N\$, note that^ $N=X_{2}^{T}X_{1}$
+-   When looking at reduced normal equations can sometimes convert matrices into treatment/incidence matrices $N$ and \$N^{T}N\$, note that^ $N=X_{2}^{T}X_{1}$
 
 ## Notes from final week of revision
 
@@ -319,7 +319,7 @@ Quiz 2 Q1
 
 -   When runs halved (ie only run one block instead of 2, ie fractional instead of confounded, variances of main effect estimates are doubled as well as aliasing issues)
 
--   Adjust contrasts using bonferroni if using a combination of different treatment number comparisons (ie a pairwise and avg of 2 vs 1)
+-   Adjust contrasts using Bonferroni if using a combination of different treatment number comparisons (ie a pairwise and avg of 2 vs 1)
 
 -   Treatment difference can be estimated **independently** of blocks if **orthogonal**
 
