@@ -134,7 +134,7 @@ $$
 
 By setting the design matrix $X=\frac{2^{f}}{2}\tilde{C}$ we get the result that allows us to estimate the factorial effects as 2 times the regression coefficients. I note that $X$ is unscaled contrast coefficients.
 
-Each factorial effect contributes $n\hat{\beta_{j}^{2}}$ to the regression sum of squares (remember $\hat{\beta}$ is the regression coefficient not the factorial effect). Note when running ANOVA $X = [1_{n} | X]$ basically includes intercept column. Note if remove factorial effects to estimate $\sigma^{2}$ the MS of this is the SS of the factorial effects removed.
+Each factorial effect contributes $n\hat{\beta_{j}^{2}}$ to the regression sum of squares (remember $\hat{\beta}$ is the regression coefficient not the factorial effect). Note when running ANOVA $X = [1_{n} | X]$ basically includes intercept column. Note if remove factorial effects to estimate $\sigma^{2}$ the MS of this is the SS of the factorial effects removed by its df.
 
 ## Chapter 5:
 
@@ -189,13 +189,15 @@ $$
 E(\hat{\boldsymbol{\beta_{1}}}) = \boldsymbol{\beta_{1}} + A\boldsymbol{\beta_{2}} 
 $$
 
+Thus, using other definition of **estimability** that $E(\boldsymbol{a}^{T}\boldsymbol{y})=\boldsymbol{c}^{T}\boldsymbol{\theta}$ we require $\beta_{2}=0$ to be able to estimate $\beta_{1}$
+
 We can generate the alias matrix using `alias`
 
 ```{r}
 t(alias(spring.lm)$Complete)
 ```
 
-Overall there are $2^{f-q}$ strings with $2^{q}$ words in each. I note that `Frf2` uses the f-q **base factors** thus to specify the generators only need to specify A,B,C,D (not E and plus).
+Overall there are $2^{f-q}$ strings with $2^{q}$ words in each. I note that `Frf2` uses the f-q **base factors** thus only need to specify A,B,C,D (not E and F) a for $2^{6-2}$ design.
 
 Analysis can proceed as in chapter 4 assuming only one factorial effect in each alias string is non-zero, we can also choose not to estimate some higher order effects (strings only including higher order effects) and instead use them to estimate the $\sigma^{2}$. Note each string contributes 1 df thus there are $2^{f-q}-1$ df used in estimating effects (-1 due to defining relation not being an factorial effect).
 
@@ -255,9 +257,25 @@ To calculate the **SS** use the difference in the RSS between null and model (or
 
 Exercise 2, q4
 
-Exercise 4, question 3
+Exercise 4, question 3, q2(look at matrix solution)
 
-Exercise 6, q4
+Exercise 6, q4, q3
+
+Exercise 1, q3 c
+
+Exercise 3, q4, q5
+
+Question 6b
+
+Question 5b
+
+Question 7 c,e
+
+Question 9 biv
+
+2021/22 Q3b, Q4c, Q6
+
+Quiz 2 Q1
 
 ## Revision Week stuff:
 
@@ -280,3 +298,31 @@ Exercise 6, q4
 #### Matrix stuff :(
 
 -   When looking at reduced noraml equations can sometimes convert matrices into treatment/incidence matrices $N$ and \$N^{T}N\$, note that^ $N=X_{2}^{T}X_{1}$
+
+## Notes from final week of revision
+
+-   For **CRD** adjusted model matrix $X_{2|1}=X_{2}-\frac{1}{n}[n_{1}\boldsymbol{1}_{n},...,n_{t}\boldsymbol{1}_{n}]$ thus every column of $X_{2}$ adjusted by column mean. Also as row sums are zero, not of full rank
+
+-   For using **Tukey adjustment** 1-qtukey(sqrt(2)\*t-value,number of treats (don't take away one),residual df)
+
+-   If doing overall comparison (averaging over multiple treatments) and testing one hypothesis can just use **t-test statistic** see ex2 q2.iv
+
+-   When stating model don't forget that $\varepsilon \sim N(0,\sigma^{2})$ with independence for different experimental units assumed
+
+-   **Variance of factorial effects** are $Var(\theta)=\frac{4\sigma^{2}}{n}$ (consider main effect to get this and same for interactions as sum of squared contrast coefficients will be the same (all are scaled by $\frac{1}{2^{f-1}}$))
+
+-   contrast vectors are **orthogonal** to blocks if -1 and +1 occurs equally often in each block (elementwise product is zero), as same contrast is used to estimate block and factorial effect if large assume due to block effect
+
+-   Remember to state the $Y$ and $\varepsilon$ dimensions (and is a response vector or vector of independent and identically distributed random errors)
+
+-   By ***foldover*** of an original design by reversing signs of effects chosen to be in confounding relation (independent ones) they will no longer be aliased with the mean (note that the hadmard product of them will still be)
+
+-   When runs halved (ie only run one block instead of 2, ie fractional instead of confounded, variances of main effect estimates are doubled as well as aliasing issues)
+
+-   Adjust contrasts using bonferroni if using a combination of different treatment number comparisons (ie a pairwise and avg of 2 vs 1)
+
+-   Treatment difference can be estimated **independently** of blocks if **orthogonal**
+
+-   represent an estimable factorial effect as $\theta$
+
+-   ALways mention the resolution of the design and what this means in terms of effect aliasing
